@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <termios.h>
 
+#define NO_TEST_MAIN 1
+
 #define WIDTH 40
 #define HEIGHT 40
 
@@ -35,6 +37,7 @@ static inline void put_p2(char *buff, int x, int y, char c){
 }
  
 void put_line2(char *buff, int x1, int y1, int x2, int y2, char c){
+#if 0
     if(x2 == x1){
         if(y1 > y2){
             size_t tmp = y1;
@@ -45,6 +48,10 @@ void put_line2(char *buff, int x1, int y1, int x2, int y2, char c){
         }
         return;
     }
+#endif
+
+    if(x2 == x1 && (x1 >= WIDTH || x1 < 0)) return;
+    if(y2 == y1 && (y1 >= WIDTH || y1 < 0)) return;
 
     if(x1 > x2){
         swap(&x1, &x2);
@@ -55,7 +62,8 @@ void put_line2(char *buff, int x1, int y1, int x2, int y2, char c){
 
     if(abs_f(mx) <= 1){
         float h = y1-mx*x1;
-        for(int i = x1; i <= x2; i++){
+        for(int i = x1; (i <= x2 && abs(i) <= WIDTH-1); i++){
+            if(i < 0) continue;
             put_p2(buff, i, (int)(mx*i+h), c);
         }
         return;
@@ -70,7 +78,8 @@ void put_line2(char *buff, int x1, int y1, int x2, int y2, char c){
     
     if(abs_f(my) <= 1){
         float h = x1-my*y1;
-        for(int i = y1; i <= y2; i++){
+        for(int i = y1; (i <= y2 && abs(i) <= HEIGHT-1); i++){
+            if(i < 0) continue;
             put_p2(buff, (int)(my*i+h), i, c);
         }
     }
@@ -120,6 +129,8 @@ vec2_t project_p3(vec3_f p, vec3_f c, vec3_f c_a, vec3_f e){
     vec3_f tor = { p.x - c.x, p.y - c.y, p.z - c.z };
     vec3_f d = rotate_p3(tor, c_a);
 
+    if(d.z < 0) d.z = INFINITY;
+
     vec2_t b = {
         .x = (size_t)(WIDTH/2+e.z*d.x/d.z+e.x),
         .y = (size_t)(HEIGHT/2+e.z*d.y/d.z+e.y)
@@ -128,7 +139,7 @@ vec2_t project_p3(vec3_f p, vec3_f c, vec3_f c_a, vec3_f e){
     return b;
 }
 
-#if 1
+#if NO_TEST_MAIN
 
 int main(){
     struct termios old_settings, settings;
@@ -170,6 +181,7 @@ int main(){
 //    float ang_x = PI/32,
 //          ang_y = PI/32,
 //          ang_z = PI/32;
+    float v0, v1, v2, v3;
 
     for(;;){
 //        angles.y -= PI/32;
@@ -187,10 +199,17 @@ int main(){
         }
 
         for(int i = 0; i < 12; i++){
-            put_line2(screen, vertices_p[edges[i].fst].x,
-                              vertices_p[edges[i].fst].y,
-                              vertices_p[edges[i].snd].x,
-                              vertices_p[edges[i].snd].y, c);
+            v0 = vertices_p[edges[i].fst].x;
+            v1 = vertices_p[edges[i].fst].y;
+            v2 = vertices_p[edges[i].snd].x;
+            v3 = vertices_p[edges[i].snd].y;
+
+            if(v0 == INFINITY 
+            || v1 == INFINITY 
+            || v2 == INFINITY 
+            || v3 == INFINITY) continue; 
+
+            put_line2(screen, v0, v1, v2, v3, c);
         }
 
         clear_screen();
@@ -255,7 +274,7 @@ int main(void){
     char *screen = malloc(screen_size*sizeof(char));
     memset(screen, ' ', screen_size*sizeof(char));
 
-    put_line2(screen, 10, 10, 50, 30, '0');
+    put_line2(screen, -30, -30, 50, 50, '0');
     clear_screen();
     print_buff(screen, screen_size);
     fflush(stdout);
